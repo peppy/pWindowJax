@@ -1,0 +1,6 @@
+Just a little 1 hour proof-of-concept implementing hotkey-based window movement and resizing as seen in the OS X app HyperDock.
+
+Move Active Window - Ctrl+Winkey
+Resize Active Window - Alt+Winkey
+
+Note that it has some strange effects on usually unsizable windows.
