@@ -87,6 +87,32 @@ namespace pWindowJax
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
 
+        [DllImport("user32.dll")]
+        public static extern IntPtr WindowFromPoint(POINT Point);
+
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        public static extern uint GetWindowModuleFileName(IntPtr hwnd, StringBuilder lpszFileName, uint cchFileNameMax);
+
+        [DllImport("user32.dll")]
+        public static extern bool GetCursorPos(out POINT lpPoint);
+
+        [return: MarshalAs(UnmanagedType.Bool)]
+        [DllImport("user32", CharSet = CharSet.Ansi, SetLastError = true, ExactSpelling = true)]
+        public static extern bool SetForegroundWindow(IntPtr hwnd);
+
+        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Auto)]
+        public static extern IntPtr GetParent(IntPtr hWnd);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+        // When you don't want the ProcessId, use this overload and pass IntPtr.Zero for the second parameter
+        [DllImport("user32.dll")]
+        static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr ProcessId);
+
+        [DllImport("user32.dll")]
+        static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
         [StructLayout(LayoutKind.Sequential)]
         struct WINDOWINFO
         {
@@ -102,7 +128,7 @@ namespace pWindowJax
             public ushort wCreatorVersion;
 
             public WINDOWINFO(Boolean? filler)
-                : this()   // Allows automatic initialization of "cbSize" with "new WINDOWINFO(null/true/false)".
+                : this()
             {
                 cbSize = (UInt32)(Marshal.SizeOf(typeof(WINDOWINFO)));
             }
@@ -117,14 +143,11 @@ namespace pWindowJax
         {
             InitializeComponent();
 
-            //RegisterHotKey(this, Keys.Control | Keys.LWin, 1);
-            //RegisterHotKey(this, Keys.Alt | Keys.LWin, 2);
-
-            HookManager.KeyDown += new KeyEventHandler(HookManager_KeyDown);
-            HookManager.KeyUp += new KeyEventHandler(HookManager_KeyUp2);
+            HookManager.KeyDown += keyDown;
+            HookManager.KeyUp += keyUp;
         }
 
-        void HookManager_KeyUp2(object sender, KeyEventArgs e)
+        void keyUp(object sender, KeyEventArgs e)
         {
             ctrlPressed &= e.KeyValue != 162;
             altPressed &= e.KeyValue != 164;
@@ -137,7 +160,7 @@ namespace pWindowJax
         bool altPressed;
         bool winPressed;
 
-        void HookManager_KeyDown(object sender, KeyEventArgs e)
+        void keyDown(object sender, KeyEventArgs e)
         {
             ctrlPressed |= e.KeyValue == 162;
             altPressed |= e.KeyValue == 164;
@@ -149,17 +172,53 @@ namespace pWindowJax
                 startOp(true);
         }
 
+        /// <summary>
+        /// Position of the window when move/resize operation began.
+        /// </summary>
+        Point initialPosition;
+
+        /// <summary>
+        /// Size of the window when move/resize operation began.
+        /// </summary>
+        RECT windowSize;
+
+        bool isOperating;
+        bool isOperationResizing;
+
         void startOp(bool resize)
         {
             if (isOperating && isOperationResizing == resize)
-                return;
+                return; //an operation is in progress and is the same type as the one requested.
 
+            //Make sure the window underneath the cursor is foregrounded.
+            POINT p;
+            if (GetCursorPos(out p))
+            {
+                IntPtr hWnd = WindowFromPoint(p);
+                IntPtr hWndSuccess = IntPtr.Zero;
+
+                while (hWnd != IntPtr.Zero)
+                {
+                    hWndSuccess = hWnd;
+                    hWnd = GetParent(hWnd);
+                }
+
+                if (hWndSuccess != IntPtr.Zero)
+                {
+                    uint cursorWindowThreadId = GetWindowThreadProcessId(hWndSuccess, IntPtr.Zero);
+                    uint foregroundWindowThreadId = GetWindowThreadProcessId(GetForegroundWindow(), IntPtr.Zero);
+
+                    AttachThreadInput(foregroundWindowThreadId, cursorWindowThreadId, true);
+                    SetForegroundWindow(hWndSuccess);
+                    AttachThreadInput(foregroundWindowThreadId, cursorWindowThreadId, false);
+                }
+            }
+
+            
             isOperationResizing = resize;
 
             IntPtr window = GetForegroundWindow();
-
             WINDOWINFO info = new WINDOWINFO();
-
             GetWindowInfo(window, ref info);
 
             initialPosition = Cursor.Position;
@@ -168,7 +227,8 @@ namespace pWindowJax
             lock (this)
             {
                 if (isOperating)
-                    return;
+                    return; //an operation has just switch modes from move <-> resize, but is already in progress.
+
                 isOperating = true;
             }
 
@@ -191,13 +251,9 @@ namespace pWindowJax
             }).Start();
         }
 
-        bool isOperating;
-        bool isOperationResizing;
+        
 
-        Point initialPosition;
-        RECT windowSize;
-
-        private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        private void linkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             Process.Start("http://twitter.com/peppyhax");
         }
