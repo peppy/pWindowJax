@@ -59,7 +59,7 @@
             this.ClientSize = new System.Drawing.Size(335, 161);
             this.Controls.Add(this.linkLabel1);
             this.Controls.Add(this.label1);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.Name = "MainForm";
             this.ShowIcon = false;
