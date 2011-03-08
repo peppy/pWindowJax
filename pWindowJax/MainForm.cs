@@ -203,18 +203,38 @@ namespace pWindowJax
                     hWnd = GetParent(hWnd);
                 }
 
-                if (hWndSuccess != IntPtr.Zero)
+                if (hWndSuccess != IntPtr.Zero && hWndSuccess != GetForegroundWindow())
                 {
-                    uint cursorWindowThreadId = GetWindowThreadProcessId(hWndSuccess, IntPtr.Zero);
-                    uint foregroundWindowThreadId = GetWindowThreadProcessId(GetForegroundWindow(), IntPtr.Zero);
+                    {
+                        //first set the main form window as active...
+                        uint cursorWindowThreadId = GetWindowThreadProcessId(Handle, IntPtr.Zero);
+                        uint foregroundWindowThreadId = GetWindowThreadProcessId(GetForegroundWindow(), IntPtr.Zero);
 
-                    AttachThreadInput(foregroundWindowThreadId, cursorWindowThreadId, true);
-                    SetForegroundWindow(hWndSuccess);
-                    AttachThreadInput(foregroundWindowThreadId, cursorWindowThreadId, false);
+                        if (foregroundWindowThreadId != cursorWindowThreadId)
+                            AttachThreadInput(foregroundWindowThreadId, cursorWindowThreadId, true);
+
+                        SetForegroundWindow(Handle);
+
+                        if (foregroundWindowThreadId != cursorWindowThreadId)
+                            AttachThreadInput(foregroundWindowThreadId, cursorWindowThreadId, false);
+                    }
+
+                    {
+                        //then switch to the target window.
+                        uint cursorWindowThreadId = GetWindowThreadProcessId(hWndSuccess, IntPtr.Zero);
+                        uint foregroundWindowThreadId = GetWindowThreadProcessId(GetForegroundWindow(), IntPtr.Zero);
+
+                        if (foregroundWindowThreadId != cursorWindowThreadId)
+                            AttachThreadInput(foregroundWindowThreadId, cursorWindowThreadId, true);
+
+                        SetForegroundWindow(hWndSuccess);
+
+                        if (foregroundWindowThreadId != cursorWindowThreadId)
+                            AttachThreadInput(foregroundWindowThreadId, cursorWindowThreadId, false);
+                    }
                 }
             }
 
-            
             isOperationResizing = resize;
 
             IntPtr window = GetForegroundWindow();
