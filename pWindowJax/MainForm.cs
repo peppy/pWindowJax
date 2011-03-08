@@ -254,24 +254,31 @@ namespace pWindowJax
 
             new Thread(t =>
             {
+                Point lastCursorPosition = Point.Empty;
+
                 while (isOperating)
                 {
+                    if (Cursor.Position == lastCursorPosition)
+                    {
+                        Thread.Sleep(16);
+                        continue;
+                    }
+
+                    lastCursorPosition = Cursor.Position;
+
                     if (isOperationResizing)
                     {
-
-                        SetWindowPos(window, IntPtr.Zero, windowSize.X, windowSize.Y, windowSize.Width + (Cursor.Position.X - initialPosition.X), windowSize.Height + (Cursor.Position.Y - initialPosition.Y), 0);
+                        SetWindowPos(window, IntPtr.Zero, windowSize.X, windowSize.Y, windowSize.Width + (lastCursorPosition.X - initialPosition.X), windowSize.Height + (lastCursorPosition.Y - initialPosition.Y), 0);
                     }
                     else
                     {
-                        SetWindowPos(window, IntPtr.Zero, windowSize.X + (Cursor.Position.X - initialPosition.X), windowSize.Y + (Cursor.Position.Y - initialPosition.Y), windowSize.Width, windowSize.Height, 0);
+                        SetWindowPos(window, IntPtr.Zero, windowSize.X + (lastCursorPosition.X - initialPosition.X), windowSize.Y + (lastCursorPosition.Y - initialPosition.Y), windowSize.Width, windowSize.Height, 0);
                     }
-
-                    Thread.Sleep(16);
                 }
             }).Start();
         }
 
-        
+
 
         private void linkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
